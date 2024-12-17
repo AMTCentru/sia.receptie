@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { readFile } from 'fs/promises';
-import * as path from 'path';
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { SiaampReceptieService } from './siaampreceptie.service';
 
@@ -16,9 +15,9 @@ export class siaampService {
         try {
             console.log('Launching Puppeteer...');
             this.browser = await puppeteer.launch({
-                //executablePath: '/usr/bin/google-chrome-stable',
-                //headless: false,
-                executablePath: '/usr/bin/chromium-browser',
+                executablePath: '/usr/bin/google-chrome-stable',
+                headless: false,
+                //executablePath: '/usr/bin/chromium-browser',
                 args: ['--no-sandbox', '--disable-setuid-sandbox'],
             });
 
@@ -36,7 +35,7 @@ export class siaampService {
             }, {timeout: 5000}, qr);
             
             // Take a screenshot and save it to the specified path
-            const filePath = path.resolve(__dirname, '../../screenshot.png');
+            const filePath = `${process.env.LOG_LOCATION}/screenshot.png`;
             const boundingBox = await (await page.$(qr)).boundingBox();
             await page.screenshot({ 
                 path: filePath,
@@ -69,7 +68,7 @@ export class siaampService {
 
             const opertorRegistratura = ".ui-datagrid-row>td:nth-child(2)>div>div>form>input:nth-child(6)"
             await page.waitForSelector(opertorRegistratura)
-            const filePath = path.resolve(__dirname, '../../screenshot.png');
+            const filePath = `${process.env.LOG_LOCATION}/screenshot.png`;
             if (!opertorRegistratura) {
                 await page.screenshot({path: filePath,})
                 const screenshotBuffer = await readFile(filePath);
@@ -83,7 +82,6 @@ export class siaampService {
 
             await page.screenshot({path: filePath,})
             const screenshotBuffer = await readFile(filePath);
-
             return screenshotBuffer
         } catch (error) {
             if (this.browser) {

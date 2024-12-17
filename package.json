@@ -1,7 +1,7 @@
 {
   "name": "sia.receptie",
   "version": "0.0.1",
-  "description": "",
+  "description": "- PORT=4002 - DB_PORT=1433 - DB_USER= - DB_HOST= - DB_NAME= - DB_PASSWORD= - LASTROW=279 - LOG_LOCATION=./logs/ ## Project setup",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
@@ -34,6 +34,7 @@
     "class-validator": "^0.14.1",
     "express": "^4.21.2",
     "glob": "^11.0.0",
+    "inflight": "^1.0.6",
     "lru-cache": "^11.0.2",
     "nest-winston": "^1.9.7",
     "puppeteer": "^23.6.0",
@@ -71,5 +72,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  }
+  },
+  "main": "index.js",
+  "keywords": []
 }

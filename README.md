@@ -8,6 +8,7 @@
 - DB_PASSWORD=
 - LASTROW=279
 - LOG_LOCATION=./logs/
+
 ## Project setup
 
 ```bash

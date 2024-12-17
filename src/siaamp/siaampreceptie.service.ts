@@ -32,13 +32,13 @@ export class SiaampReceptieService {
     
     while(true){
       await this.isHidden(page)
-      this.logger.log(`[Start Pas2] Numarul de repetari : ${i}`)
+      this.logger.log(`[Pas2] Numarul de repetari : ${i}`)
       
       const totalRow = await this.tabelmedici(page)
       this.logger.log(`[Pas2] totalRow : ${totalRow}, lastrows : ${lastrows}`)
 
       for (let row = lastrows; row <= totalRow; row++) {
-        this.logger.log('Rindul: '+ row)
+        this.logger.log(`[Pas2] Rindul: ${row}`)
         await this.isHidden(page)
   
         const click = `#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID > div:nth-child(2) > table > tbody > tr:nth-child(${row}) > td:nth-child(5)`
@@ -58,7 +58,8 @@ export class SiaampReceptieService {
         const specialiatate = await page.evaluate((row) => {
           return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(4)`).textContent;
         }, row);
-        this.logger.log(numeMedic,' ',prenumeMedic, ' ',specialiatate)        
+
+        this.logger.log(`[Pas2] ${numeMedic} ${prenumeMedic} ${specialiatate}`)        
         if (institutia !== 'AMS IMSP Institutul Mamei și Copilului'  && specialiatate !== 'Alta specialitate') {
 
           const receptieDto = new CreateReceptieDto();
@@ -71,7 +72,6 @@ export class SiaampReceptieService {
           await page.waitForSelector(buton); // Ensure the button is available before clicking
           await page.click(buton); // Click the button
           
-          this.logger.log('[Pas2] ',perioadaStart,perioadaFinish,receptieDto);
           await this.pas3(page, perioadaStart, perioadaFinish, receptieDto);         
         }
         await this.tabelmedici(page)
@@ -80,21 +80,21 @@ export class SiaampReceptieService {
         }
       }
       i++
-      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }  
   async pas3(page: Page, perioadaStart: Date, perioadaStop: Date,data:CreateReceptieDto) {
     await this.isHidden(page)
     await page.waitForSelector('#contentform\\:panelTab_header'); // 10 seconds
-    this.logger.log('[pas3] ',perioadaStart,perioadaStop,data);
 
     let currentDate = new Date(perioadaStart);
     while (currentDate <= perioadaStop) {
       await this.isHidden(page);
       const suntemintabelulcaretrebuie = await this.ceziesteintabel(page, currentDate);
+      const curentYear = parseInt(suntemintabelulcaretrebuie.split('-')[0]);
+      const year = (currentDate.getFullYear() - curentYear) * 12
       const curentmonth = parseInt(suntemintabelulcaretrebuie.split('-')[1]);
       const startmonth = currentDate.getMonth() + 1; // +1 pentru a obține luna 1-12
-      const monthDiff = startmonth - curentmonth;
+      const monthDiff = year + startmonth - curentmonth;
 
       await this.verifyDay(page, monthDiff);
 
@@ -132,7 +132,7 @@ export class SiaampReceptieService {
       }, currentDate.toISOString().split('T')[0]);
       await this.isHidden(page)
     } while (new Date(curentclickdate) === ceva)
-      this.logger.log('[clickDate] : ', curentclickdate)
+    this.logger.log(`[clickDate] : ${curentclickdate}`)
     return curentclickdate
   }
 
@@ -144,8 +144,6 @@ export class SiaampReceptieService {
         await page.waitForSelector(buttonSelector);
         await page.click(buttonSelector);
         await this.isHidden(page)
-          
-        await this.isHidden(page);
 
         const firstday = "#contentform\\:schedule_container > div > div > table > tbody > tr:nth-child(3) > td.fc-day.fc-mon.ui-widget-content.fc-first";
         await page.waitForSelector(firstday);
@@ -238,7 +236,7 @@ export class SiaampReceptieService {
         }
       } 
     } catch (error) {
-      this.logger.error("Error processing data:", error);
+      this.logger.error(`[getHTML] eroare : ${error}`);
     }
   }
   
