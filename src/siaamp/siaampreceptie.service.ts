@@ -1,17 +1,15 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Page } from 'puppeteer';
 import * as cheerio from 'cheerio';
-import { CreateReceptieDto } from 'src/receptie/create.dto';
-import { ReceptieService } from 'src/receptie/receptie.service';
+import { CreateReceptieDto } from '../receptie/create.dto';
+import { ReceptieService } from '../receptie/receptie.service';
 
 @Injectable()
 export class SiaampReceptieService {
 
-  constructor(private receptieService: ReceptieService) {}
+  private readonly logger = new Logger(SiaampReceptieService.name)
 
-  async delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
+  constructor(private receptieService: ReceptieService) {}
 
   async Pas1(page: Page){
     await page.goto('https://sia.amp.md/siaamp/');  
@@ -26,67 +24,71 @@ export class SiaampReceptieService {
     const clickReceptiePeZi = ".leftBar>div:nth-child(2)>div>div>ul>li:nth-child(1)"
     await this.isHidden(page)
     await page.click(clickReceptiePeZi)
-    console.log('Final Pas1')
+    this.logger.log('[SiaampReceptieService] Final Pas1')
   }
-  async Pas2(page: Page){
-    // await page.goto('https://sia.amp.md/siaamp/');  
-    await this.isHidden(page)
-    console.log('Start Pas2')
-
-    await this.tabelmedici(page)
-    const lastrows = await this.receptieService.getLastRow()
-    for (let row = lastrows; row <= 300; row++) {
-      console.log('Rindul: '+ row)
+  async Pas2(page: Page, perioadaStart: Date, perioadaFinish: Date){
+    let i = 0
+    let lastrows = await this.receptieService.getLastRow()
+    
+    while(true){
       await this.isHidden(page)
-
-      const click = `#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID > div:nth-child(2) > table > tbody > tr:nth-child(${row}) > td:nth-child(5)`
-      await page.evaluate((click)=>{
-        (document.querySelector(click) as HTMLElement).scrollIntoView()
-      },click)
-      // await page.select(click)
-      // Extract the institution name
-      const institutia = await page.evaluate((row) => {
-        return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(5)`).textContent;
-      }, row);
-      const numeMedic = await page.evaluate((row) => {
-        return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(2)`).textContent;
-      }, row);
-      const prenumeMedic = await page.evaluate((row) => {
-        return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(3)`).textContent;
-      }, row);
-      console.log(numeMedic,' ',prenumeMedic)
+      this.logger.log(`[Start Pas2] Numarul de repetari : ${i}`)
       
-      const specialiatate = await page.evaluate((row) => {
+      const totalRow = await this.tabelmedici(page)
+      this.logger.log(`[Pas2] totalRow : ${totalRow}, lastrows : ${lastrows}`)
+
+      for (let row = lastrows; row <= totalRow; row++) {
+        this.logger.log('Rindul: '+ row)
+        await this.isHidden(page)
+  
+        const click = `#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID > div:nth-child(2) > table > tbody > tr:nth-child(${row}) > td:nth-child(5)`
+        await page.evaluate((click)=>{
+          (document.querySelector(click) as HTMLElement).scrollIntoView()
+        },click)
+
+        const institutia = await page.evaluate((row) => {
+          return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(5)`).textContent;
+        }, row);
+        const numeMedic = await page.evaluate((row) => {
+          return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(2)`).textContent;
+        }, row);
+        const prenumeMedic = await page.evaluate((row) => {
+          return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(3)`).textContent;
+        }, row);
+        const specialiatate = await page.evaluate((row) => {
           return document.querySelector(`#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(4)`).textContent;
-      }, row);
-      if (institutia !== 'AMS IMSP Institutul Mamei și Copilului'  && specialiatate !== 'Alta specialitate') {
+        }, row);
+        this.logger.log(numeMedic,' ',prenumeMedic, ' ',specialiatate)        
+        if (institutia !== 'AMS IMSP Institutul Mamei și Copilului'  && specialiatate !== 'Alta specialitate') {
 
-        const receptieDto = new CreateReceptieDto();
-        receptieDto.medic = numeMedic+" "+prenumeMedic
-        receptieDto.institutie = institutia
-        receptieDto.specialitate = specialiatate
-        receptieDto.row = row
-        
-        const buton = `#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(1)>button`;
-        await page.waitForSelector(buton); // Ensure the button is available before clicking
-        await page.click(buton); // Click the button
-
-        const perioadaStart = new Date('2024-10-21');
-        const perioadaFinish = new Date('2024-11-30');
-        
-        await this.pas3(page, perioadaStart, perioadaFinish, receptieDto);
-
+          const receptieDto = new CreateReceptieDto();
+          receptieDto.medic = numeMedic+" "+prenumeMedic
+          receptieDto.institutie = institutia
+          receptieDto.specialitate = specialiatate
+          receptieDto.row = row
+          
+          const buton = `#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID>div:nth-child(2)>table>tbody>tr:nth-child(${row})>td:nth-child(1)>button`;
+          await page.waitForSelector(buton); // Ensure the button is available before clicking
+          await page.click(buton); // Click the button
+          
+          this.logger.log('[Pas2] ',perioadaStart,perioadaFinish,receptieDto);
+          await this.pas3(page, perioadaStart, perioadaFinish, receptieDto);         
+        }
         await this.tabelmedici(page)
-
+        if(totalRow === row){
+          lastrows = 1
+        }
       }
+      i++
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }  
   async pas3(page: Page, perioadaStart: Date, perioadaStop: Date,data:CreateReceptieDto) {
     await this.isHidden(page)
     await page.waitForSelector('#contentform\\:panelTab_header'); // 10 seconds
-    console.log('Start Pas3');
+    this.logger.log('[pas3] ',perioadaStart,perioadaStop,data);
 
-    let currentDate = perioadaStart;
+    let currentDate = new Date(perioadaStart);
     while (currentDate <= perioadaStop) {
       await this.isHidden(page);
       const suntemintabelulcaretrebuie = await this.ceziesteintabel(page, currentDate);
@@ -105,7 +107,7 @@ export class SiaampReceptieService {
     }
   }
 
-  async clickDate(page: Page, currentDate: Date) : Promise<Date>{
+  async clickDate(page: Page, currentDate: Date) : Promise<string>{
     let curentclickdate
     const dataTabel = '#contentform\\:panelTab_header > span'
     const datacurenta = await page.evaluate((dataTabel)=>{
@@ -130,7 +132,8 @@ export class SiaampReceptieService {
       }, currentDate.toISOString().split('T')[0]);
       await this.isHidden(page)
     } while (new Date(curentclickdate) === ceva)
-    return new Date(curentclickdate)
+      this.logger.log('[clickDate] : ', curentclickdate)
+    return curentclickdate
   }
 
   async verifyDay(page: Page, month: number) {
@@ -151,7 +154,7 @@ export class SiaampReceptieService {
   }
 
 
-  async getHTML(page: Page, currentDate: Date, data:CreateReceptieDto) {
+  async getHTML(page: Page, currentDate:string, data:CreateReceptieDto) {
     const CLINIC_SELECTOR = '#contentform\\:setDoctorPatient > tbody > tr:nth-child(2) > td:nth-child(2)';
     const LEGEND_TABLE_SELECTOR = '#contentform\\:colorConsultNom>div>div';
     const RECEPTION_TABLE_SELECTOR = '#contentform\\:tableGraphic > div'
@@ -220,7 +223,7 @@ export class SiaampReceptieService {
           for (const entry of newReceptionContent) {
             data.cabinet = cabinetMedic;
             data.dataActiune = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Chisinau' }).replace('T', ' ');
-            data.dataReceptie = currentDate.toLocaleString('sv-SE', { timeZone: 'Europe/Chisinau' }).replace('T', ' ');
+            data.dataReceptie = currentDate;
             data.pacient = entry.pacient;
             data.idnpPacient = entry.idnpPacient;
             data.dataNasterePacient = entry.dataNasterePacient;
@@ -235,7 +238,7 @@ export class SiaampReceptieService {
         }
       } 
     } catch (error) {
-      console.error("Error processing data:", error);
+      this.logger.error("Error processing data:", error);
     }
   }
   
@@ -258,7 +261,7 @@ export class SiaampReceptieService {
     let attempts = 0; // Track the number of attempts
   
     do {
-      await this.delay(300); // Wait for a short duration
+      await new Promise(resolve => setTimeout(resolve, 300));
       value = await page.evaluate(() => {
         const element = document.querySelector('body > div:nth-child(5)');
         return element && element.getAttribute('style') 
@@ -270,7 +273,7 @@ export class SiaampReceptieService {
       // Reload the page if the limit of attempts is exceeded
       if (attempts > 10) {
         await page.reload();
-        console.log('Reloading page due to hidden element');
+        this.logger.log('[isHidden] Reloading page due to hidden element');
         attempts = 0; // Reset attempts after reloading
       }
     } while (value !== true); // Continue until the element is no longer hidden
@@ -278,8 +281,8 @@ export class SiaampReceptieService {
   }
   
 
-  async tabelmedici(page:Page){
-    console.log('Start Tabel Medici')
+  async tabelmedici(page:Page) : Promise<number> {
+    this.logger.log('[tabelmedici] Start Tabel Medici')
 
     await this.isHidden(page)
     const clickAlegeMedicul = "#contentform\\:selectedDoctor>tbody>tr:nth-child(2)>td:nth-child(2)>button"
@@ -287,19 +290,36 @@ export class SiaampReceptieService {
     await page.click(clickAlegeMedicul)    
 
     await this.isHidden(page)
+    await page.waitForSelector('#contentform\\:docTableDoctor\\:doctorFormSpecialization', {
+        visible: true, // Asigură-te că este vizibil
+        timeout: 10000 // Timeout de 20 de secunde
+    });
     const alltable = await page.evaluate(() => {
       const rows = document.querySelectorAll('#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID_data>tr'); // Selectorul corect pentru rânduri
       return rows.length > 250;
     });
+
+    // Get the total number of items
+    const text = await page.evaluate(() => {
+      return document.querySelector('.ui-paginator-current').textContent;
+    });
+
+    const match = text.match(/din (\d+)/);
+    const total = match[1]; // Default to '0' if no match found
+    if(total == '0'){
+      return null
+    }
+
     if(alltable === false){
+      
       const changeValuePaginator = "#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID_paginator_bottom > select > option:nth-child(2)"
       await page.waitForSelector(changeValuePaginator)
   
-      await page.evaluate((selector) => {
+      await page.evaluate((selector,total) => {
         const select = document.querySelector(selector) as HTMLSelectElement;
-        select.value = '300'; // Set the desired value
+        select.value = total; // Set the desired value
         select.dispatchEvent(new Event('change')); // Trigger change event
-      }, changeValuePaginator);
+      }, changeValuePaginator,total);
   
       // Now you can select an option if needed
       const clickPaginator = "#contentform\\:docTableDoctor\\:doctorFormSpecialization\\:doctorTableID_paginator_bottom > select";
@@ -309,10 +329,11 @@ export class SiaampReceptieService {
   
       await this.isHidden(page)
       const dropdown = await page.$(clickPaginator); // Use the same selector for the dropdown
-      await dropdown.select('300'); // Use the value of the option you want to select
-      console.log('Tabel Medici - clickpaginator')
+      await dropdown.select(total); // Use the value of the option you want to select
+      this.logger.log('[tabelmedici] Tabel Medici - clickpaginator')
     }
     await this.isHidden(page)
-    console.log('Final Tabel Medici')
+    this.logger.log('[tabelmedici] Final Tabel Medici')
+    return parseInt(total)
   }
 }

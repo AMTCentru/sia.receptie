@@ -1,9 +1,10 @@
 import { ReceptieModule } from './receptie/receptie.module';
 import { SiaampModule } from './siaamp/siaamp.module';
 import { ReceptieModel } from './receptie/receptie.model';
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
+import { HttpLoggerMiddleware } from './HttpLoggerMiddleware';
 
 
 @Module({
@@ -27,4 +28,8 @@ import { ConfigModule } from '@nestjs/config';
     SiaampModule
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(HttpLoggerMiddleware).forRoutes('*');
+  }
+}

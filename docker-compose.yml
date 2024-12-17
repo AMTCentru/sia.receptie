@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  puppeteer:
+    build: .
+    volumes:
+      - ./file:/usr/src/app/file
+    ports:
+      - "4002:4002"

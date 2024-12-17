@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TransfersiaController} from './siaamp.controller';
 import { SequelizeModule } from '@nestjs/sequelize';
-import { ReceptieModel } from 'src/receptie/receptie.model';
+import { ReceptieModel } from '../receptie/receptie.model';
 import { siaampService } from './siaamp.service';
 import { SiaampReceptieService } from './siaampreceptie.service';
-import { ReceptieService } from 'src/receptie/receptie.service';
+import { ReceptieService } from '../receptie/receptie.service';
 
 
 @Module({
