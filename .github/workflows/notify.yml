@@ -1,0 +1,19 @@
+name: Notify via Telegram on Push
+
+on:
+  push:
+    branches:
+      - main # Se declanșează la un push pe branch-ul "main"
+
+jobs:
+  send_telegram_notification:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Telegram notification
+        run: |
+          REPO_NAME="${{ github.repository }}"  # Numele repository-ului, de ex. user/repository
+          COMMIT_URL="${{ github.event.head_commit.url }}"  # URL-ul commit-ului
+          curl -s -X POST https://api.telegram.org/bot7885748107:AAFx3q6o6IDrfw03zOc2JqSkQpo31NJLJOk/sendMessage \
+          -d chat_id=1021715992 \
+          -d text="🚀 Codul a fost actualizat pe branch-ul main! Vezi modificările în repository-ul $REPO_NAME: $COMMIT_URL"
