@@ -19,9 +19,9 @@ export class siaampService {
         }
         this.logger.log('Launching Puppeteer...');
         this.browser = await puppeteer.launch({
-            executablePath: '/usr/bin/google-chrome-stable',
+            // executablePath: '/usr/bin/google-chrome-stable',
             //headless: false,
-            //executablePath: '/usr/bin/chromium-browser',
+            executablePath: '/usr/bin/chromium-browser',
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
 
