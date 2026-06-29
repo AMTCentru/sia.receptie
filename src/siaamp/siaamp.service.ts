@@ -18,15 +18,28 @@ export class siaampService {
             throw new Error('[logareSiaReceptie] Exista browser pornit');
         }
         this.logger.log('Launching Puppeteer...');
-        this.browser = await puppeteer.launch({
-            // executablePath: '/usr/bin/google-chrome-stable',
-            //headless: false,
-            executablePath: '/usr/bin/chromium-browser',
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        // this.browser = await puppeteer.launch({
+        //     executablePath: '/usr/bin/chromium',
+        //     headless: false,
+        //     defaultViewport: null,
+        //     //executablePath: '/usr/bin/chromium-browser',
+        //     args: [
+        //         '--no-sandbox',
+        //         '--disable-setuid-sandbox',
+        //         '--start-maximized',
+        //         '--disable-infobars',
+        //     ],
+        // });
+        this.browser = await puppeteer.connect({
+            browserWSEndpoint: 'ws://127.0.0.1:9222/devtools/browser/2ce077ec-123e-48ba-9afb-c7c533ac17ab',
+            defaultViewport: null
         });
-
         const pages: Page[] = await this.browser.pages();
         const page: Page = pages[0]; // Prima pagină deschisă
+        if(page){
+            this.logger.log(`[logareSiaReceptie] Pagina Deschisa`)
+            return
+        }
         try {
             await page.goto('https://sia.amp.md/siaamp/',{
                 waitUntil:'load',
@@ -69,40 +82,69 @@ export class siaampService {
         }
     }
 
-    async checkLogat(){
+    async checkLogat() {
+
         if (!this.browser) {
             throw new Error('Nu exista browser pornit');
         }
+
         const page = await this.browser.newPage();
         this.logger.error('[checkLogat] Pagina deschisa');
-        try{
-            await page.goto('https://sia.amp.md/siaamp/mpassUsers.html');
-            const opertorRegistratura = ".ui-datagrid-row>td:nth-child(2)>div>div>form>input:nth-child(6)"
-            await page.waitForSelector(opertorRegistratura,{timeout:5000})
-            const filePath = `${process.env.LOG_LOCATION}/screenshot.png`;
-            if (!opertorRegistratura) {
-                await page.screenshot({path: filePath,})
-                const screenshotBuffer = await readFile(filePath);
-                return screenshotBuffer
-            }  
-            await page.click(opertorRegistratura)
 
-            await page.goto('https://sia.amp.md/siaamp/',{waitUntil: 'load', // Așteaptă încărcarea completă
-            });
+        try {
 
-            await page.screenshot({path: filePath,})
-            const screenshotBuffer = await readFile(filePath);
-            return screenshotBuffer
-        } catch (error) {
-            if (this.browser) {
-                await this.browser.close();  // Închide browserul doar dacă este deschis
-                this.browser = null
+            await page.goto('https://sia.amp.md/siaamp/mpassUsers.html', { waitUntil: 'load' });
+
+            const rows = await page.$$('div._holder');
+            let found = false;
+
+            for (const row of rows) {
+
+                const text = await page.evaluate(el => el.textContent.trim(), row);
+
+                if (text === "Operator statistică") {
+
+                    const form = await row.evaluateHandle(el => el.closest('form'));
+                    const button = await form.$('input._submit');
+
+                    await Promise.all([
+                        page.waitForNavigation({ waitUntil: 'load' }),
+                        button.click()
+                    ]);
+
+                    found = true;
+                    break;
+                }
             }
+
+            const filePath = `${process.env.LOG_LOCATION}/screenshot.png`;
+
+            if (!found) {
+                await page.screenshot({ path: filePath });
+                return await readFile(filePath);
+            }
+
+            await page.goto('https://sia.amp.md/siaamp/', { waitUntil: 'load' });
+
+            await page.screenshot({ path: filePath });
+
+            return await readFile(filePath);
+
+        } catch (error) {
+
+            if (this.browser) {
+                await this.browser.close();
+                this.browser = null;
+            }
+
             this.logger.error('[checkLogat]', error);
             throw new BadRequestException(error);
+
         } finally {
-            await page.close()
+
+            await page.close();
             this.logger.error('[checkLogat] Pagina inchisa');
+
         }
     }
 
@@ -119,8 +161,8 @@ export class siaampService {
             await this.siaservice.Pas2(page,startDate,stopDate)
         } 
         catch (error) {
-            await this.browser.close()
-            this.browser = null
+            // await this.browser.close()
+            // this.browser = null
             this.logger.error(`[startSiaReceptie] eroare : ${error}`);
         } 
     }

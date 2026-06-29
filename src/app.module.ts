@@ -5,6 +5,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { ConfigModule } from '@nestjs/config';
 import { HttpLoggerMiddleware } from './HttpLoggerMiddleware';
+import { VerificareReceptieDiferente } from './receptie/verificare-receptie-diferente.model';
 
 
 @Module({
@@ -22,6 +23,7 @@ import { HttpLoggerMiddleware } from './HttpLoggerMiddleware';
       database: process.env.DB_NAME,
       models: [
         ReceptieModel,
+        VerificareReceptieDiferente
       ],
     }),
     ReceptieModule,

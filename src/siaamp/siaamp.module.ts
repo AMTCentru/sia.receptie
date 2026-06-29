@@ -5,6 +5,8 @@ import { ReceptieModel } from '../receptie/receptie.model';
 import { siaampService } from './siaamp.service';
 import { SiaampReceptieService } from './siaampreceptie.service';
 import { ReceptieService } from '../receptie/receptie.service';
+import { VerificareReceptieDiferente } from 'src/receptie/verificare-receptie-diferente.model';
+import { ScreenshotsService } from './screenshots.service';
 
 
 @Module({
@@ -13,10 +15,12 @@ import { ReceptieService } from '../receptie/receptie.service';
     siaampService,
     SiaampReceptieService,
     ReceptieService,
+    ScreenshotsService
   ],
   imports:[
     SequelizeModule.forFeature([
-      ReceptieModel
+      ReceptieModel,
+      VerificareReceptieDiferente
     ]),
   ]
 })
